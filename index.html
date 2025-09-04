@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sombras de Gotham</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            color: #d1d5db;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .story-container {
+            background-color: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid #374151;
+        }
+        .title-font {
+            font-family: 'Cormorant Garamond', serif;
+        }
+        .choice-button {
+            transition: all 0.3s ease;
+            background-color: #374151;
+            border: 1px solid #4b5563;
+        }
+        .choice-button:hover {
+            background-color: #4b5563;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+        }
+        #story-text p {
+            margin-bottom: 1.5rem;
+            line-height: 1.75;
+        }
+        #scene-image-container {
+            border: 1px solid #374151;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen p-4">
+
+    <div id="sound-toggle" class="fixed top-4 right-4 z-50 cursor-pointer p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition text-white">
+        <svg id="sound-on-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+        <svg id="sound-off-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=""><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M23 9l-6 6M17 9l6 6"></path></svg>
+    </div>
+
+    <div class="story-container w-full max-w-3xl mx-auto rounded-lg shadow-2xl p-6 md:p-8">
+        <h1 id="game-title" class="title-font text-4xl md:text-5xl font-bold text-center text-red-700 mb-6">Sombras de Gotham</h1>
+
+        <div id="game-content">
+            <div id="scene-image-container" class="mb-6 rounded-md overflow-hidden bg-gray-800">
+                <img id="scene-image" src="https://placehold.co/800x400/111827/4b5563?text=Gotham+City" alt="Cena de Gotham" class="w-full h-auto object-cover">
+            </div>
+            <div id="story-text" class="text-gray-300 text-lg mb-6">
+                <!-- O texto da história será inserido aqui pelo JavaScript -->
+            </div>
+            <div id="choices" class="grid grid-cols-1 gap-4">
+                <!-- Os botões de escolha serão inseridos aqui pelo JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <audio id="background-music" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+        Seu navegador não suporta o elemento de áudio.
+    </audio>
+
+    <script>
+        const storyTextElement = document.getElementById('story-text');
+        const choicesElement = document.getElementById('choices');
+        const sceneImageElement = document.getElementById('scene-image');
+        const gameTitleElement = document.getElementById('game-title');
+        const soundToggle = document.getElementById('sound-toggle');
+        const soundOnIcon = document.getElementById('sound-on-icon');
+        const soundOffIcon = document.getElementById('sound-off-icon');
+        const music = document.getElementById('background-music');
+        music.volume = 0.1;
+
+        // Sound Control
+        function updateSoundIcons() {
+            if (music.paused) {
+                soundOnIcon.classList.add('hidden');
+                soundOffIcon.classList.remove('hidden');
+            } else {
+                soundOnIcon.classList.remove('hidden');
+                soundOffIcon.classList.add('hidden');
+            }
+        }
+
+        soundToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (music.paused) {
+                music.play().catch(() => {});
+            } else {
+                music.pause();
+            }
+            updateSoundIcons();
+        });
+
+        document.body.addEventListener('click', () => {
+            if (music.paused) {
+                music.play().catch(() => {});
+                updateSoundIcons();
+            }
+        }, { once: true });
+
+        let state = {};
+
+        function showScene(sceneKey) {
+            const scene = story[sceneKey];
+            
+            gameTitleElement.style.opacity = 0;
+            storyTextElement.style.opacity = 0;
+            choicesElement.style.opacity = 0;
+            sceneImageElement.style.opacity = 0;
+
+            setTimeout(() => {
+                let storyHtml = scene.text.split('\n').map(p => `<p>${p}</p>`).join('');
+                storyTextElement.innerHTML = storyHtml;
+                sceneImageElement.src = scene.image;
+                sceneImageElement.alt = scene.alt;
+                gameTitleElement.textContent = scene.title || "Sombras de Gotham";
+
+                while (choicesElement.firstChild) {
+                    choicesElement.removeChild(choicesElement.firstChild);
+                }
+
+                if (scene.choices) {
+                    scene.choices.forEach(choice => {
+                        const button = document.createElement('button');
+                        button.innerText = choice.text;
+                        button.className = 'choice-button w-full text-left p-4 rounded-lg text-white font-semibold focus:outline-none focus:ring-2 focus:ring-red-600';
+                        button.addEventListener('click', () => selectChoice(choice));
+                        choicesElement.appendChild(button);
+                    });
+                }
+                
+                 if (scene.isEnd) {
+                    const button = document.createElement('button');
+                    button.innerText = "Jogar Novamente";
+                    button.className = 'choice-button w-full text-left p-4 rounded-lg text-white font-semibold focus:outline-none focus:ring-2 focus:ring-red-600 mt-4';
+                    button.addEventListener('click', () => startGame());
+                    choicesElement.appendChild(button);
+                }
+
+                gameTitleElement.style.transition = 'opacity 0.5s';
+                storyTextElement.style.transition = 'opacity 0.5s';
+                choicesElement.style.transition = 'opacity 0.5s 0.2s';
+                sceneImageElement.style.transition = 'opacity 0.5s';
+                
+                gameTitleElement.style.opacity = 1;
+                storyTextElement.style.opacity = 1;
+                choicesElement.style.opacity = 1;
+                sceneImageElement.style.opacity = 1;
+
+            }, 500);
+        }
+
+        function selectChoice(choice) {
+            if (choice.setState) {
+                state = { ...state, ...choice.setState };
+            }
+            showScene(choice.nextScene);
+        }
+
+        const story = {
+            start: {
+                title: "O Primeiro Dia",
+                image: "https://i.postimg.cc/V65dwzSR/7aa55dc7-82a1-4272-91a7-3b4e1cc62113.jpg",
+                alt: "Fachada do Departamento de Polícia de Gotham City",
+                text: "A chuva ácida de Gotham tamborilava contra a janela do seu novo escritório, um som constante que prometia nunca cessar. Você é Ethan Cole, recém-transferido para o DPGC, o epicentro da podridão desta cidade. O cheiro de café requentado e desespero paira no ar. Você olha para o seu reflexo no vidro molhado: um rosto jovem demais, olhos ainda não corrompidos pelo cinismo que impregna as paredes deste lugar.\nO Capitão Ramirez, um homem com o peso da cidade nos ombros, lhe entrega seu distintivo e arma. 'Bem-vindo ao inferno, Cole. Tente não se queimar.' Seu parceiro, Detetive Marcus Doyle, um veterano com um sorriso cínico, aperta sua mão. 'A regra número um em Gotham, garoto? Mantenha a cabeça baixa. A segunda? Esqueça a primeira.'\nAntes que você possa se instalar, o Sargento Briggs, um homem corpulento cuja sombra parece preencher a sala, se aproxima. 'Gotham é uma cidade doente, garoto,' ele rosna, com um hálito de uísque. 'Para sobreviver, você não luta contra a doença, você escolhe o parasita certo. Tenho um trabalho pra você, algo que não está nos registros.'",
+                choices: [
+                    { text: "Ouvir a proposta de Briggs.", nextScene: "corrupt_1_offer" },
+                    { text: "Recusar e manter-se limpo.", nextScene: "honest_1_refuse" }
+                ]
+            },
+            // --- CAMINHO DA CORRUPÇÃO ---
+            corrupt_1_offer: {
+                title: "A Proposta",
+                image: "https://i.postimg.cc/QNwWXKJW/Captura-de-tela-4-9-2025-132642-www-bing-com.jpg",
+                alt: "Sargento Briggs fazendo uma proposta em um canto escuro da delegacia",
+                text: "Você segue Briggs até um canto isolado da sala de arquivos. O cheiro de mofo e segredos guardados é sufocante. 'O caso do armazém no cais,' ele diz em voz baixa, 'Envolveu um carregamento da família Falcone. Deu errado. Um dos nossos se feriu. Há uma página no livro de registros que precisa... desaparecer. Apenas uma página, garoto. Faça isso, e sua vida nesta cidade será muito mais fácil. Há uma recompensa generosa.'\nEle desliza um envelope grosso sobre a mesa. O peso dele é quase palpável. Ele não está pedindo, está lhe dando uma chave. A questão é qual porta ela abre, e o que há do outro lado.",
+                choices: [
+                    { text: "Aceitar. Em Gotham, ou você come, ou é comido.", nextScene: "corrupt_2_accept" },
+                    { text: "Recusar. Isso é ir longe demais.", nextScene: "corrupt_2_refuse_late" }
+                ]
+            },
+            corrupt_2_accept: {
+                title: "A Primeira Mancha",
+                image: "https://placehold.co/800x400/1a202c/2d3748?text=Prova+Queimando",
+                alt: "Página de um registro sendo queimada em um cinzeiro",
+                text: "Você acena com a cabeça, o coração martelando contra as costelas como um prisioneiro tentando fugir. Naquela noite, na sala de evidências silenciosa e fria, você remove a página. O papel parece queimar em seus dedos antes de você destruí-lo. O envelope de Briggs está no seu bolso, pesado com o dinheiro e com o peso da sua escolha.\nNos dias seguintes, a vida muda. Casos mais fáceis chegam à sua mesa. Um informante anônimo lhe dá uma dica que resolve um caso de grande repercussão, rendendo-lhe um elogio do Capitão. Você sente os olhares dos outros policiais, uma mistura de inveja e suspeita. Doyle mal fala com você, seu cinismo agora tingido de desprezo. Você está subindo, mas o ar está ficando rarefeito.",
+                choices: [
+                    { text: "Continuar. O primeiro passo já foi dado.", nextScene: "corrupt_3_new_task" }
+                ]
+            },
+             corrupt_2_refuse_late: {
+                title: "Sem Escolha",
+                image: "https://i.postimg.cc/CKhRvGS9/gotham-central-5.jpg",
+                alt: "Briggs ameaçando Ethan",
+                text: "Você balança a cabeça. 'Não posso fazer isso.' O sorriso de Briggs desaparece, como uma luz se apagando. 'Ah, garoto... você acha que tinha escolha?' Ele se inclina, o rosto a centímetros do seu. 'Eu já disse que você fez. A câmera da sala de evidências teve um 'defeito' conveniente ontem à noite, bem quando você estava lá para arquivar um relatório. A página já sumiu. E adivinha cujas digitais estão por toda a cópia que eu tenho?'\nO chão some sob seus pés. Você não escolheu a corrupção; ela escolheu você. Você foi pego em uma teia antes mesmo de saber que ela existia. Agora, você está preso.",
+                choices: [
+                    { text: "Obedecer. Você não tem outra saída.", nextScene: "corrupt_3_new_task" }
+                ]
+            },
+            corrupt_3_new_task: {
+                title: "Mãos Sujas",
+                image: "https://placehold.co/800x400/1a202c/4a5568?text=Dinheiro+Sujo",
+                alt: "Uma mão recebendo um maço de dinheiro em um carro",
+                text: "Você se torna o homem de Briggs dentro do DPGC. As tarefas ficam mais sujas: 'perder' relatórios, dar falsos testemunhos, vazar informações. O dinheiro continua vindo, mas o preço é sua alma, pedaço por pedaço.\nUma noite, um novo trabalho. Um comerciante local, um bom homem chamado Silas, se recusa a pagar a 'taxa de proteção' a Falcone. 'Ele precisa de um incentivo,' diz Briggs. 'Uma visita sua. Deixe umas provas de tráfico na loja dele. Nada que o prenda por muito tempo, apenas o suficiente para assustá-lo e arruinar sua reputação.'",
+                choices: [
+                    { text: "Fazer o serviço sujo. Você já está fundo demais.", nextScene: "corrupt_4_final_path" },
+                    { text: "Tentar avisar Silas discretamente.", nextScene: "corrupt_4_betrayal" }
+                ]
+            },
+            corrupt_4_betrayal: {
+                title: "Boa Ação, Punição Certa",
+                image: "https://placehold.co/800x400/111827/2d3748?text=Telefone+Público",
+                alt: "Uma ligação anônima de um telefone público na chuva",
+                text: "Sua consciência pesa. De um telefone público, você liga para Silas e o avisa, sem se identificar. 'Feche a loja. Tire sua família da cidade por alguns dias.' Você se sente bem por um momento, um lampejo do policial que queria ser. Mas em Gotham, nenhuma boa ação fica impune.\nNo dia seguinte, Briggs te encurrala. Seu rosto é uma tempestade. 'Você é um idiota. Achou que não saberíamos?' Ele te mostra uma foto granulada. É você, no telefone público. 'Falcone não gosta de pontas soltas, nem de traidores. Você se tornou os dois.'",
+                choices: [
+                    { text: "Aceitar seu destino.", nextScene: "end_corrupt" },
+                    { text: "Espera aí...", nextScene: "batman_save_corrupt"}
+                ]
+            },
+            corrupt_4_final_path: {
+                title: "O Fim da Linha",
+                image: "https://placehold.co/800x400/111827/2d3748?text=Beco+sem+Saída",
+                alt: "Um beco escuro e sem saída em Gotham",
+                text: "Você planta as provas. Vê o medo e a confusão nos olhos de Silas no dia seguinte. Você se tornou parte da doença. Sua 'lealdade' é recompensada, e você se torna uma peça valiosa... e descartável. A lealdade em Gotham tem o prazo de validade de um copo de leite ao sol.\nSemanas depois, Briggs te liga. 'Falcone quer te agradecer pessoalmente. Beco atrás do Iceberg Lounge. Venha sozinho.' O tom dele é frio, final. Você sabe o que isso significa. Uma ponta solta precisa ser amarrada, e essa ponta é você.",
+                choices: [
+                    { text: "Ir para o beco. Encarar o fim.", nextScene: "end_corrupt" },
+                    { text: "Espera aí...", nextScene: "batman_save_corrupt"}
+                ]
+            },
+            end_corrupt: {
+                title: "Pó ao Pó",
+                isEnd: true,
+                image: "https://placehold.co/800x400/000000/ff0000?text=FIM",
+                alt: "Fim do jogo",
+                text: "O beco fede a lixo e promessas quebradas. Duas figuras saem das sombras. Não há palavras, não há discursos. Apenas o som metálico de uma arma sendo engatilhada e dois flashes ofuscantes.\nSeu corpo cai na poça de água suja, o distintivo do DPGC afundando lentamente. Você escolheu sobreviver, mas sobreviveu apenas para morrer como um criminoso qualquer.\n'Em Gotham, até os corruptos viram pó. Você escolheu sobreviver… mas ninguém sobrevive por muito tempo.'",
+            },
+            // --- CAMINHO DA INTEGRIDADE ---
+            honest_1_refuse: {
+                title: "A Linha na Areia",
+                image: "https://placehold.co/800x400/2d3748/718096?text=Desafio",
+                alt: "Ethan Cole encarando o Sargento Briggs",
+                text: "Você olha Briggs nos olhos. 'Eu vim para Gotham para fazer cumprir a lei, não para quebrá-la.' Um silêncio pesado cai entre vocês. O sorriso de Briggs se esvai, substituído por um olhar gelado. 'Coragem. Ou estupidez. Veremos quanto tempo isso dura.' Ele se vira e se afasta, deixando a ameaça pairando no ar.\nSeu parceiro, Marcus, se aproxima discretamente. 'Você não devia ter feito isso, garoto. Acabou de pintar um alvo nas suas costas. Ouvi uma história sobre um recruta que tentou ser herói. Acharam o carro dele no fundo do rio Gotham, sem ele dentro.'",
+                choices: [
+                    { text: "Denunciar Briggs ao Capitão Ramirez. A lei deve prevalecer.", nextScene: "honest_2_report" },
+                    { text: "Ignorar. Focar no seu trabalho e esperar que passe.", nextScene: "honest_2_ignore" }
+                ]
+            },
+            honest_2_report: {
+                title: "Muros de Silêncio",
+                image: "https://placehold.co/800x400/1a202c/2d3748?text=Ouvidos+Mocos",
+                alt: "Capitão Ramirez ouvindo a denúncia com indiferença",
+                text: "Você vai direto para a sala do Capitão Ramirez e conta tudo. Ele ouve pacientemente, os dedos entrelaçados sobre a mesa, o rosto impassível. Quando você termina, ele suspira, um som cansado. 'Cole, você é novo aqui. Briggs é um veterano condecorado. Você não tem provas, apenas sua palavra contra a dele. Deixe isso pra lá. É um conselho, não um pedido.'\nVocê sai da sala com um gosto amargo na boca. A corrupção não era um segredo; era uma política não escrita. Agora, você é um problema. Os outros policiais te olham de esguelha. Você se tornou um fantasma na sua própria delegacia.",
+                choices: [
+                    { text: "Investigar Briggs por conta própria. Se a lei não age, você agirá.", nextScene: "honest_3_investigate" },
+                ]
+            },
+            honest_2_ignore: {
+                title: "Isolamento",
+                 image: "https://placehold.co/800x400/1a202c/4a5568?text=Sozinho+na+Multidão",
+                alt: "Ethan Cole sentado sozinho em sua mesa na delegacia",
+                text: "Você tenta seguir o conselho de Marcus. Foca nos seus casos, preenche a papelada, faz o trabalho. Mas a delegacia se tornou um lugar gelado. Seus colegas de trabalho param de conversar quando você se aproxima. Suas solicitações de apoio demoram a ser atendidas. Em uma perseguição, seu rádio misteriosamente falha no momento mais crítico. Você está sendo caçado em silêncio.\nVocê não é mais um deles. É um corpo estranho, e o organismo está tentando te expelir. A solidão é uma arma que eles usam com maestria.",
+                 choices: [
+                    { text: "Você não pode mais ignorar. É hora de revidar.", nextScene: "honest_3_investigate" },
+                ]
+            },
+            honest_3_investigate: {
+                title: "Caçando Fantasmas",
+                image: "https://placehold.co/800x400/111827/4a5568?text=Investigação+Noturna",
+                alt: "Documentos espalhados em uma mesa sob a luz de uma lâmpada",
+                text: "Você passa noites em claro, movido a café e teimosia, vasculhando arquivos antigos, seguindo Briggs depois do expediente, mergulhando na escuridão que jurou combater. Você descobre um padrão: casos envolvendo a máfia Falcone são consistentemente mal gerenciados, com evidências perdidas ou testemunhas que desaparecem. Metade da delegacia parece estar na folha de pagamento de alguém.\nO único que ainda fala com você é Marcus. Ele parece genuinamente preocupado. 'Ethan, larga isso. Eles vão te matar. Essa cidade está quebrada, você não pode consertá-la sozinho.' Sua voz soa genuína, mas em Gotham, a confiança é um luxo que poucos podem pagar.",
+                choices: [
+                    { text: "Confiar em Marcus e pedir sua ajuda. Você não aguenta mais sozinho.", nextScene: "honest_4_trust_marcus" },
+                    { text: "Enfrentar a corrupção sozinho. É o seu fardo.", nextScene: "honest_4_alone" }
+                ]
+            },
+            honest_4_trust_marcus: {
+                title: "A Traição",
+                image: "https://i.postimg.cc/VLt05sKZ/Captura-de-tela-4-9-2025-132659-www-bing-com.jpg",
+                alt: "O parceiro Marcus Doyle revela sua traição",
+                text: "Exausto, você decide confiar em Marcus. Você mostra a ele o que descobriu - um livro-caixa com nomes de policiais e pagamentos. 'Podemos levar isso para a corregedoria, para a imprensa!' você diz, com um fio de esperança. Marcus olha para os papéis, seu rosto uma máscara indecifrável. 'Você tem razão,' ele diz, pegando o livro. 'É a nossa chance.'\nEle pega o telefone. 'Alô, Briggs? Sou eu. O novato sabe demais.' O sangue gela nas suas veias. 'Sinto muito, garoto,' diz Marcus, e o último resquício de esperança que você tinha morre. 'Eu tentei te avisar. Em Gotham, você se adapta ou morre. Eu me adaptei há muito tempo.'",
+                choices: [
+                    { text: "Aceitar a traição e o fim.", nextScene: "end_honest_betrayed" },
+                    { text: "Espera aí...", nextScene: "batman_save_honest" }
+                ]
+            },
+            honest_4_alone: {
+                title: "A Emboscada",
+                image: "https://i.postimg.cc/HkCcMGKY/Captura-de-tela-4-9-2025-132629-www-bing-com.jpg",
+                alt: "Silhuetas ameaçadoras em um beco escuro",
+                text: "Você sabia que não podia confiar em ninguém. Era você contra a cidade inteira. Com as provas em uma pasta debaixo do braço, você se dirige ao único jornalista que ainda tem alguma reputação em Gotham. Mas eles estavam te esperando. Em uma rua estreita e chuvosa, dois carros bloqueiam sua passagem. Briggs desce de um deles, aplaudindo lentamente.\n'Eu disse que você era estúpido,' ele diz, o desprezo evidente em sua voz. 'Você achou mesmo que um homem poderia limpar esta cidade? Esta cidade não quer ser limpa. Ela gosta da sujeira. É o que a mantém viva.'",
+                choices: [
+                    { text: "Encarar o seu fim com honra.", nextScene: "end_honest_ambushed" },
+                    { text: "Espera aí...", nextScene: "batman_save_honest" }
+                ]
+            },
+            end_honest_betrayed: {
+                title: "Sangue Justo",
+                isEnd: true,
+                image: "https://i.postimg.cc/HL6VFrLn/Captura-de-tela-4-9-2025-132621-www-bing-com.jpg",
+                alt: "Fim do jogo",
+                text: "Marcus te leva para um armazém abandonado no cais. Briggs está esperando. A dor da traição é pior que o medo da morte. Você olha nos olhos do homem que chamou de parceiro enquanto ele saca a arma. Ele nem hesita.\nSeu corpo é encontrado dias depois, um caso arquivado como 'confronto com criminosos'. Ninguém pergunta, ninguém investiga. Você era um homem bom tentando fazer a coisa certa, e sua recompensa foi uma bala de um amigo.\n'Em Gotham, até os justos sangram. Você tentou mudar algo… mas Gotham nunca muda.'",
+            },
+             end_honest_ambushed: {
+                title: "Um Grito no Escuro",
+                isEnd: true,
+                image: "https://i.postimg.cc/HL6VFrLn/Captura-de-tela-4-9-2025-132621-www-bing-com.jpg",
+                alt: "Fim do jogo",
+                text: "Você não corre. Não há para onde ir. Você encara Briggs e seus capangas, o distintivo ainda no peito, um pequeno pedaço de metal contra uma maré de escuridão. O som dos tiros ecoa pelo beco, um som que Gotham engole sem sequer notar.\nSeu nome nunca será mencionado como herói. Você será apenas mais um policial morto, uma estatística na guerra sem fim desta cidade. Você se manteve íntegro até o fim, mas seu fim chegou mesmo assim.\n'Em Gotham, até os justos sangram. Você tentou mudar algo… mas Gotham nunca muda.'",
+            },
+            batman_save_corrupt: {
+                title: "Uma Sombra Inesperada",
+                image: "https://i.postimg.cc/gjXXVGmJ/20376312.jpg",
+                alt: "A silhueta do Batman aparece no beco",
+                text: "Justo quando o metal frio do cano da arma toca sua nuca, uma sombra maior que a própria noite desce sobre o beco. Um vulto. Duas figuras caem antes mesmo que você ouça o som. Um batarangue zune pelo ar, desarmando o último capanga.\nO Batman está ali, uma estátua de vingança e escuridão. Seus olhos brancos se fixam em você, cortando através da sua alma corrupta. Ele não diz nada, mas o silêncio é mais pesado que qualquer acusação. Ele te salvou da morte, mas não da justiça.",
+                choices: [
+                    { text: "Encarar seu novo destino.", nextScene: "end_batman_interrogation" }
+                ]
+            },
+            end_batman_interrogation: {
+                title: "O Interrogatório",
+                isEnd: true,
+                image: "https://i.postimg.cc/C53ZJ9x4/penelopecharmosa.jpg",
+                alt: "Batman interrogando Ethan Cole",
+                text: "Você está em uma sala escura, fria, de metal. O Batman está à sua frente. 'Você traiu seu distintivo. Traiu a cidade. Mas você não é um assassino. Vou te dar uma escolha,' a voz dele é como um trovão. 'Você me conta tudo. Cada policial corrupto, cada acordo, cada nome. E talvez... talvez você veja a luz do dia de novo, do outro lado das grades de Blackgate.'\nVocê sobreviveu à noite em Gotham. Mas sua vida como Ethan Cole acabou. Uma longa escuridão o aguarda.",
+            },
+            batman_save_honest: {
+                title: "O Anjo Sombrio",
+                image: "https://i.postimg.cc/gjXXVGmJ/20376312.jpg",
+                alt: "A silhueta do Batman aparece para salvar o detetive",
+                text: "É o fim. Você fecha os olhos, esperando o impacto. Em vez disso, ouve um baque, um grito, e o som de ossos quebrando. Você abre os olhos. Seus agressores estão no chão, inconscientes. Uma figura imponente, envolta em uma capa escura, está parada sobre eles.\nO Batman. Ele se aproxima, e pela primeira vez, você não sente medo, mas uma estranha sensação de alívio. 'Você lutou, detetive. Lutou por uma cidade que não te queria,' ele diz, a voz grave. 'Você não pode vencer. Não aqui.'",
+                choices: [
+                    { text: "O que acontece agora?", nextScene: "end_batman_metropolis" }
+                ]
+            },
+            end_batman_metropolis: {
+                title: "Um Novo Amanhecer",
+                isEnd: true,
+                image: "https://i.postimg.cc/x1ykyxDK/metropolis-comics.jpg",
+                alt: "A cidade ensolarada de Metropolis",
+                text: "'Gotham é um veneno,' continua o Batman. 'E você é um homem bom. Não posso deixar que ela te consuma.' Ele aperta um comunicador. 'Tenho um amigo. Ele vai te encontrar nos arredores da cidade. Uma nova identidade, uma nova vida. Em um lugar mais... ensolarado.'\nHoras depois, você está em uma estrada poeirenta, o sol da manhã esquentando seu rosto pela primeira vez em anos. Uma figura desce dos céus. O símbolo em seu peito é um 'S'. 'Vim ajudar,' ele diz com um sorriso. 'Bem-vindo a Metropolis. Sua vida começa agora.'\nVocê sobreviveu a Gotham. Você escapou da escuridão.",
+            }
+        };
+
+        function startGame() {
+            state = {};
+            showScene('start');
+        }
+
+        startGame();
+        updateSoundIcons(); // Initialize icons correctly
+    </script>
+</body>
+</html>
+
